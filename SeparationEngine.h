@@ -13,6 +13,13 @@ struct SeparatedStreams {
 
 class SeparationEngine {
 public:
-    // 분리된 스트림 반환 함수
-    SeparatedStreams separate(const std::vector<uint8_t>& raw_data);
+    SeparatedStreams separate(const std::vector<uint8_t>& data);
+
+    // 3개의 스트림을 원본 데이터로 재조립하는 함수
+    std::vector<uint8_t> reconstruct(
+        const std::vector<uint8_t>& value_bitmap,
+        const std::vector<uint8_t>& auxiliary_mask,
+        const std::vector<uint8_t>& reconstructed_stream,
+        bool aux_mask_1_represents_11
+    );
 };
