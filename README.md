@@ -1,25 +1,29 @@
 EN
-The core principle of TriSplit is "Divide, Transform, and Conquer."
+✨ The Core Principle of TriSplit
+"Divide, Transform, and Conquer"
+Instead of compressing a file all at once, TriSplit sees data as tiny 2-bit pieces (🧩 symbols).
+It then intelligently sorts these pieces into three specialized containers (📂 streams) based on their characteristics:
 
-Instead of compressing the original data directly, the engine treats it as a sequence of 2-bit symbols (00, 01, 10, 11). It then intelligently separates these symbols into three different sub-streams based on their statistical properties.
+value_bitmap (Pure Information): Collects only pure values, like from 01 or 10.
 
-value_bitmap (Pure Information): A stream containing only the value information from 01 and 10 symbols.
+reconstructed_stream (Structural Information): Contains the overall skeleton and positional data.
 
-reconstructed_stream (Structural Information): A stream that holds the data's overall structure and the positions of symbols.
+auxiliary_mask (Exceptional Information): Records only the locations of special cases, like the rarer symbols 00 or 11.
 
-auxiliary_mask (Exceptional Information): A stream that only records the locations of the rarer symbol between 00 and 11.
-
-Each of these separated streams becomes very simple in its own way, making it ideal for compression. By individually compressing these optimized streams, the engine achieves high overall efficiency.
+Each of these separated streams becomes very simple and uniform, making them perfectly optimized for compression.
+By compressing these individual streams, the engine achieves maximum overall efficiency.
 
 KR
-TriSplit의 핵심 원리는 **"분리하고, 변환하고, 정복하라"**입니다.
+✨ TriSplit의 핵심 원리
+"분리하고, 변환하고, 정복하라"
+TriSplit은 파일을 통째로 압축하는 대신, 데이터를 2비트 단위의 작은 조각(🧩 심볼)으로 바라봅니다.
+그리고 이 조각들을 성격에 따라 아래의 세 가지 특수 저장소(📂 스트림)로 재분배합니다.
 
-이 압축기는 원본 데이터를 직접 압축하는 대신, 데이터를 2비트 단위의 작은 심볼(00, 01, 10, 11)로 간주합니다. 그 후, 이 심볼들을 통계적 특성에 따라 세 종류의 스트림으로 지능적으로 분리합니다.
+value_bitmap (값 정보): 01 또는 10 처럼 순수한 값을 가진 정보만 모아둡니다.
 
-Value Bitmap (순수 정보): 01, 10 심볼의 값 정보만 모아놓은 스트림.
+reconstructed_stream (구조 정보): 데이터의 전체적인 뼈대와 위치 정보를 담습니다.
 
-Reconstructed Stream (구조 정보): 데이터의 전체적인 구조와 심볼의 위치 정보를 담은 스트림.
+auxiliary_mask (예외 정보): 00이나 11 같이 가끔 등장하는 특별한 정보의 위치만 기록합니다.
 
-Auxiliary Mask (예외 정보): 00과 11 중 더 드물게 나타나는 심볼의 위치만 따로 기록한 스트림.
-
-이렇게 분리된 스트림들은 각각의 특성이 매우 단순해져 압축에 아주 유리한 상태가 됩니다. 이 최적화된 스트림들을 개별적으로 압축하여 전체적으로 높은 효율을 달성하는 방식입니다.
+이렇게 분리된 저장소들은 각각의 내용이 매우 단순해져, 압축하기 아주 좋은 상태가 됩니다.
+이 최적화된 스트림들을 개별적으로 압축하여 최고의 효율을 만들어냅니다.
