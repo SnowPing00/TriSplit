@@ -124,23 +124,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="BwtEngine\BwtEngine.cpp" />
-    <ClCompile Include="BwtEngine\BwtTransform\BwtTransform.cpp" />
-    <ClCompile Include="BwtEngine\EntropyCoder\EntropyCoder.cpp" />
-    <ClCompile Include="BwtEngine\libsais\libsais.c" />
-    <ClCompile Include="BwtEngine\MtfTransform\MtfTransform.cpp" />
-    <ClCompile Include="BwtEngine\RleTransform\RleTransform.cpp" />
     <ClCompile Include="rANS_Coder.cpp" />
     <ClCompile Include="SeparationEngine.cpp" />
     <ClCompile Include="TriSplit.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="BwtEngine\BwtEngine.h" />
-    <ClInclude Include="BwtEngine\BwtTransform\BwtTransform.h" />
-    <ClInclude Include="BwtEngine\EntropyCoder\EntropyCoder.h" />
-    <ClInclude Include="BwtEngine\libsais\libsais.h" />
-    <ClInclude Include="BwtEngine\MtfTransform\MtfTransform.h" />
-    <ClInclude Include="BwtEngine\RleTransform\RleTransform.h" />
     <ClInclude Include="rans_byte.h" />
     <ClInclude Include="rANS_Coder.h" />
     <ClInclude Include="SeparationEngine.h" />

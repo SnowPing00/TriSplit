@@ -1,4 +1,5 @@
 ﻿#include "SeparationEngine.h"
+#include <iostream>
 #include <map>
 
 SeparatedStreams SeparationEngine::separate(const std::vector<uint8_t>& raw_data) {
@@ -58,43 +59,47 @@ std::vector<uint8_t> SeparationEngine::reconstruct(
     const std::vector<uint8_t>& auxiliary_mask,
     const std::vector<uint8_t>& reconstructed_stream,
     bool aux_mask_1_represents_11,
-    uint64_t original_size)
+    uint64_t original_size) // original_size는 이제 최종 크기 검증용으로만 사용
 {
     std::vector<uint8_t> two_bit_chunks;
-    two_bit_chunks.reserve(original_size * 4);
+    // [수정] 루프 횟수를 reconstructed_stream의 실제 크기를 기반으로 하도록 변경
+    two_bit_chunks.reserve(reconstructed_stream.size());
 
     size_t bitmap_idx = 0;
     size_t mask_idx = 0;
 
-    // ======================= [오류 수정 지점] =======================
-    // aux_mask_1_represents_11 플래그에 따라 심볼을 올바르게 매핑합니다.
     uint8_t symbol_for_mask_0, symbol_for_mask_1;
     if (aux_mask_1_represents_11) {
-        // '1'이 '11'을 의미하는 경우
         symbol_for_mask_0 = 0b00;
         symbol_for_mask_1 = 0b11;
     }
     else {
-        // '1'이 '00'을 의미하는 경우
         symbol_for_mask_0 = 0b11;
         symbol_for_mask_1 = 0b00;
     }
-    // ===============================================================
 
-    for (size_t i = 0; i < original_size * 4; ++i) {
-        if (i >= reconstructed_stream.size()) break; // 안전장치
-
+    // [수정] 루프 조건을 original_size * 4 대신 reconstructed_stream.size()로 변경
+    for (size_t i = 0; i < reconstructed_stream.size(); ++i) {
         uint8_t symbol_type = reconstructed_stream[i];
-        if (symbol_type == 0) {
+        if (symbol_type == 0) { // 지도 마커
             if (bitmap_idx < value_bitmap.size()) {
                 uint8_t bit = value_bitmap[bitmap_idx++];
                 two_bit_chunks.push_back(bit == 0 ? 0b10 : 0b01);
             }
+            else {
+                // 이 경우는 데이터 손상을 의미하므로 에러 처리나 로깅을 추가할 수 있습니다.
+                std::cerr << "Warning: value_bitmap index out of bounds." << std::endl;
+                break;
+            }
         }
-        else {
+        else { // 데이터 자리표시자
             if (mask_idx < auxiliary_mask.size()) {
                 uint8_t bit = auxiliary_mask[mask_idx++];
                 two_bit_chunks.push_back(bit == 0 ? symbol_for_mask_0 : symbol_for_mask_1);
+            }
+            else {
+                std::cerr << "Warning: auxiliary_mask index out of bounds." << std::endl;
+                break;
             }
         }
     }
@@ -109,6 +114,12 @@ std::vector<uint8_t> SeparationEngine::reconstruct(
         if (i + 2 < two_bit_chunks.size()) byte |= (two_bit_chunks[i + 2] << 2);
         if (i + 3 < two_bit_chunks.size()) byte |= (two_bit_chunks[i + 3] << 0);
         final_bytes.push_back(byte);
+    }
+
+    // 최종적으로 복원된 크기가 헤더의 original_size와 일치하는지 확인 (선택적)
+    if (final_bytes.size() != original_size) {
+        std::cerr << "Warning: Reconstructed size (" << final_bytes.size()
+            << ") does not match original size (" << original_size << ")." << std::endl;
     }
 
     return final_bytes;

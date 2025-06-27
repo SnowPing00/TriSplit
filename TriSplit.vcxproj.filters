@@ -15,31 +15,13 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="TriSplit.cpp">
+    <ClCompile Include="rANS_Coder.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="SeparationEngine.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="rANS_Coder.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="BwtEngine\BwtEngine.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="BwtEngine\BwtTransform\BwtTransform.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="BwtEngine\MtfTransform\MtfTransform.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="BwtEngine\RleTransform\RleTransform.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="BwtEngine\libsais\libsais.c">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="BwtEngine\EntropyCoder\EntropyCoder.cpp">
+    <ClCompile Include="TriSplit.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
@@ -51,24 +33,6 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="rans_byte.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="BwtEngine\BwtEngine.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="BwtEngine\BwtTransform\BwtTransform.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="BwtEngine\libsais\libsais.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="BwtEngine\RleTransform\RleTransform.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="BwtEngine\MtfTransform\MtfTransform.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="BwtEngine\EntropyCoder\EntropyCoder.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
