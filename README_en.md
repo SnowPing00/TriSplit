@@ -1,5 +1,7 @@
 AI-Assisted Development: Parts of the code in this project were written and modified with the assistance of Artificial Intelligence (AI).
 
+**Author: SnowPing00**
+
 TriSplit: A 3-Stream Separation-based Compression Engine
 TriSplit is not a general-purpose compressor but a highly specialized compression engine for specific data patterns. The core philosophy of this project is "Divide, Transform, and Conquer."
 
