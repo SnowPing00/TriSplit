@@ -19,6 +19,7 @@
 struct TriSplitBlockHeader {
     uint8_t  metadata_flags;
     uint8_t  reserved[7]; // 8바이트 정렬을 위한 패딩
+    uint64_t original_data_size;
     uint64_t compressed_bitmap_size;
     uint64_t compressed_mask_size;
     uint64_t compressed_reconstructed_size;
@@ -182,6 +183,8 @@ std::vector<uint8_t> compress_block(const std::vector<uint8_t>& block_data, Engi
     TriSplitBlockHeader header;
     memset(&header, 0, sizeof(header)); // 구조체 초기화
 
+    header.original_data_size = block_data.size();
+
     header.metadata_flags = 0;
     if (streams.aux_mask_1_represents_11) header.metadata_flags |= (1 << 0);
     if (is_placeholder_common)            header.metadata_flags |= (1 << 1);
@@ -271,7 +274,8 @@ std::vector<uint8_t> decompress_block(const std::vector<uint8_t>& compressed_blo
         value_bitmap,
         auxiliary_mask,
         reconstructed_stream,
-        aux_mask_1_represents_11
+        aux_mask_1_represents_11,
+        header.original_data_size
     );
 
     std::cout << "    - Done. Decompressed block size: " << original_block.size() << " bytes." << std::endl;

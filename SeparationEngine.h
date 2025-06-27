@@ -1,5 +1,4 @@
 ﻿#pragma once
-
 #include <vector>
 #include <cstdint>
 
@@ -20,6 +19,7 @@ public:
         const std::vector<uint8_t>& value_bitmap,
         const std::vector<uint8_t>& auxiliary_mask,
         const std::vector<uint8_t>& reconstructed_stream,
-        bool aux_mask_1_represents_11
+        bool aux_mask_1_represents_11,
+        uint64_t original_size
     );
 };

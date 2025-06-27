@@ -57,10 +57,11 @@ std::vector<uint8_t> SeparationEngine::reconstruct(
     const std::vector<uint8_t>& value_bitmap,
     const std::vector<uint8_t>& auxiliary_mask,
     const std::vector<uint8_t>& reconstructed_stream,
-    bool aux_mask_1_represents_11)
+    bool aux_mask_1_represents_11,
+    uint64_t original_size)
 {
     std::vector<uint8_t> two_bit_chunks;
-    two_bit_chunks.reserve(reconstructed_stream.size());
+    two_bit_chunks.reserve(original_size * 4);
 
     size_t bitmap_idx = 0;
     size_t mask_idx = 0;
@@ -80,14 +81,17 @@ std::vector<uint8_t> SeparationEngine::reconstruct(
     }
     // ===============================================================
 
-    for (uint8_t symbol_type : reconstructed_stream) {
-        if (symbol_type == 0) { // '지도 마커'인 경우
+    for (size_t i = 0; i < original_size * 4; ++i) {
+        if (i >= reconstructed_stream.size()) break; // 안전장치
+
+        uint8_t symbol_type = reconstructed_stream[i];
+        if (symbol_type == 0) {
             if (bitmap_idx < value_bitmap.size()) {
                 uint8_t bit = value_bitmap[bitmap_idx++];
                 two_bit_chunks.push_back(bit == 0 ? 0b10 : 0b01);
             }
         }
-        else { // '데이터 자리표시자' (symbol_type == 1)인 경우
+        else {
             if (mask_idx < auxiliary_mask.size()) {
                 uint8_t bit = auxiliary_mask[mask_idx++];
                 two_bit_chunks.push_back(bit == 0 ? symbol_for_mask_0 : symbol_for_mask_1);

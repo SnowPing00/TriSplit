@@ -7,18 +7,16 @@
 #include <cstring> // memcpy를 위해 추가
 
 // --- 헤더 구조체 ---
-// 파일/메모리의 데이터 구조를 일치시키고,
-// MTF 역변환에 필요한 모든 정보를 포함하도록 수정합니다.
 #pragma pack(push, 1)
 struct HuffmanHeader {
     uint32_t primary_index;
     uint64_t total_bits;
     uint16_t code_count;
-    uint16_t alphabet_size; // [추가] 초기 사전의 크기를 저장
+    uint16_t alphabet_size;
 };
 #pragma pack(pop)
 
-// 우선순위 큐(Min Heap)를 위한 비교 구조체
+// 우선순위 큐를 위한 비교 구조체
 struct NodeComparator {
     bool operator()(const std::unique_ptr<HuffmanNode>& a, const std::unique_ptr<HuffmanNode>& b) const {
         return a->frequency > b->frequency;
@@ -30,13 +28,11 @@ std::vector<uint8_t> EntropyCoder::huffman_encode(const RleResult& rle_result) {
     const auto& symbol_stream = rle_result.rle_stream;
     const auto& initial_alphabet = rle_result.initial_alphabet;
 
-    // 스트림이 비어있으면, 메타데이터만 담은 헤더를 반환합니다.
     if (symbol_stream.empty()) {
         HuffmanHeader header = { rle_result.primary_index, 0, 0, static_cast<uint16_t>(initial_alphabet.size()) };
         std::vector<uint8_t> result(sizeof(header));
         memcpy(result.data(), &header, sizeof(header));
 
-        // [추가] 비어있더라도 초기 사전 정보는 저장해야 합니다.
         if (!initial_alphabet.empty()) {
             size_t alphabet_bytes_size = initial_alphabet.size() * sizeof(uint16_t);
             result.resize(sizeof(header) + alphabet_bytes_size);
@@ -57,7 +53,6 @@ std::vector<uint8_t> EntropyCoder::huffman_encode(const RleResult& rle_result) {
         min_heap.push(std::make_unique<HuffmanNode>(HuffmanNode{ pair.first, pair.second, nullptr, nullptr }));
     }
 
-    // 심볼이 하나뿐인 엣지 케이스 처리
     if (min_heap.size() == 1) {
         auto single_node = std::move(const_cast<std::unique_ptr<HuffmanNode>&>(min_heap.top()));
         min_heap.pop();
@@ -81,11 +76,11 @@ std::vector<uint8_t> EntropyCoder::huffman_encode(const RleResult& rle_result) {
     std::map<uint16_t, std::string> huffman_codes;
     _generate_codes(root.get(), "", huffman_codes);
 
-    // 4. 데이터 직렬화 (헤더 + 코드북 + 초기 사전 + 압축 데이터)
+    // 4. 데이터 직렬화
     std::vector<uint8_t> compressed_data;
-    compressed_data.resize(sizeof(HuffmanHeader)); // 헤더 공간 확보
+    compressed_data.resize(sizeof(HuffmanHeader));
 
-    // 4a. 코드북 직렬화
+    // 4a. 코드북 직렬화 [수정된 부분]
     std::vector<uint8_t> codebook_bytes;
     for (const auto& pair : huffman_codes) {
         uint16_t symbol = pair.first;
@@ -101,10 +96,13 @@ std::vector<uint8_t> EntropyCoder::huffman_encode(const RleResult& rle_result) {
             if (code[i] == '1') {
                 byte |= (1 << (7 - (i % 8)));
             }
-            if ((i + 1) % 8 == 0 || i == code_length - 1) {
+            if ((i + 1) % 8 == 0) { // 8비트가 꽉 찰 때마다 저장
                 codebook_bytes.push_back(byte);
                 byte = 0;
             }
+        }
+        if (code_length % 8 != 0) { // 루프가 끝난 후 남은 비트가 있다면 저장
+            codebook_bytes.push_back(byte);
         }
     }
 
@@ -160,13 +158,11 @@ RleResult EntropyCoder::huffman_decode(const std::vector<uint8_t>& compressed_da
         throw std::runtime_error("Invalid Huffman data: header is too small.");
     }
 
-    // 1. 헤더 읽기
     HuffmanHeader header;
     memcpy(&header, compressed_data.data(), sizeof(header));
 
     const uint8_t* read_ptr = compressed_data.data() + sizeof(header);
 
-    // [수정] 스트림이 비어있던 경우, 복원된 사전 정보와 함께 반환
     if (header.code_count == 0 && header.total_bits == 0) {
         std::vector<uint16_t> initial_alphabet;
         if (header.alphabet_size > 0) {
@@ -176,7 +172,6 @@ RleResult EntropyCoder::huffman_decode(const std::vector<uint8_t>& compressed_da
         return { {}, initial_alphabet, header.primary_index };
     }
 
-    // 2. 허프만 트리 재구성
     auto root = std::make_unique<HuffmanNode>();
     size_t codebook_byte_size = 0;
     for (uint16_t i = 0; i < header.code_count; ++i) {
@@ -204,16 +199,14 @@ RleResult EntropyCoder::huffman_decode(const std::vector<uint8_t>& compressed_da
         codebook_byte_size += code_byte_len;
     }
 
-    // 3. 초기 사전(alphabet) 복원
     std::vector<uint16_t> initial_alphabet(header.alphabet_size);
     size_t alphabet_bytes_size = header.alphabet_size * sizeof(uint16_t);
     if (header.alphabet_size > 0) {
         memcpy(initial_alphabet.data(), read_ptr, alphabet_bytes_size);
     }
 
-    // 4. 데이터 디코딩
     std::vector<uint16_t> decoded_stream;
-    decoded_stream.reserve(header.total_bits); // 대략적인 크기 예약
+    decoded_stream.reserve(header.total_bits);
 
     const uint8_t* data_ptr = compressed_data.data() + sizeof(header) + codebook_byte_size + alphabet_bytes_size;
     uint64_t bits_decoded = 0;
@@ -236,7 +229,6 @@ RleResult EntropyCoder::huffman_decode(const std::vector<uint8_t>& compressed_da
     }
 
     std::cout << "Huffman decoding applied. Compressed size: " << compressed_data.size() << " bytes -> RLE stream size: " << decoded_stream.size() << std::endl;
-    // [수정] 복원된 모든 정보를 RleResult에 담아 반환
     return { decoded_stream, initial_alphabet, header.primary_index };
 }
 
@@ -245,9 +237,7 @@ void EntropyCoder::_generate_codes(const HuffmanNode* node, std::string current_
     if (!node) {
         return;
     }
-    // 리프 노드(자식이 없는 노드)에 도달하면 심볼과 코드를 맵에 저장
     if (!node->left && !node->right) {
-        // 엣지 케이스: 트리에 노드가 하나뿐일 경우 코드는 "0"
         huffman_codes[node->symbol] = current_code.empty() ? "0" : current_code;
         return;
     }
