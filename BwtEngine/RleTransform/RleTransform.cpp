@@ -7,7 +7,7 @@
 RleResult RleTransform::apply(const MtfResult& mtf_result) {
     const auto& mtf_stream = mtf_result.mtf_stream;
     if (mtf_stream.empty()) {
-        return { {}, mtf_result.primary_index }; // primary_index를 그대로 전달
+        return { {}, mtf_result.initial_alphabet, mtf_result.primary_index };
     }
 
     const uint16_t ZERO_RUN_CODE = 65535;
@@ -46,7 +46,7 @@ RleResult RleTransform::apply(const MtfResult& mtf_result) {
 
     std::cout << "RLE transform applied. Stream size: " << mtf_stream.size() << " -> " << rle_stream.size() << std::endl;
     // RleResult 구조체에 결과를 담아 반환
-    return { rle_stream, mtf_result.primary_index };
+    return { rle_stream, mtf_result.initial_alphabet, mtf_result.primary_index };
 }
 
 // [최종본] RLE 역변환 함수 (사용자님이 작성하신 올바른 버전)
@@ -72,5 +72,5 @@ MtfResult RleTransform::inverse_apply(const RleResult& rle_result) {
 
     std::cout << "RLE inverse transform applied. Stream size: " << rle_stream.size() << " -> " << mtf_stream.size() << std::endl;
     // MtfResult 구조체에 결과를 담아 반환
-    return { mtf_stream, rle_result.primary_index };
+    return { mtf_stream, rle_result.initial_alphabet, rle_result.primary_index };
 }

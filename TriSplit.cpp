@@ -254,7 +254,12 @@ std::vector<uint8_t> decompress_block(const std::vector<uint8_t>& compressed_blo
         // BWT 엔진으로 압축된 경우, 역변환 파이프라인을 호출합니다.
         BwtEngine engine_b;
         std::vector<uint16_t> recon_stream_u16 = engine_b.inverse_process_stream(compressed_reconstructed_data);
-        reconstructed_stream.assign(recon_stream_u16.begin(), recon_stream_u16.end());
+        // [수정된 부분] 데이터 손실 경고를 해결하기 위해 안전한 방식으로 변환
+        reconstructed_stream.clear();
+        reconstructed_stream.reserve(recon_stream_u16.size());
+        for (uint16_t val : recon_stream_u16) {
+            reconstructed_stream.push_back(static_cast<uint8_t>(val));
+        }
     }
 
     // 4. 최종 데이터 조합

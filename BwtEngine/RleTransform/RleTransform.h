@@ -6,6 +6,7 @@
 // RLE 변환 결과를 담을 구조체
 struct RleResult {
     std::vector<uint16_t> rle_stream;
+    std::vector<uint16_t> initial_alphabet;
     uint32_t primary_index = 0;
 };
 
