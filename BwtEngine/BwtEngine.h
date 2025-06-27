@@ -10,7 +10,7 @@ public:
     BwtEngine();
 
     std::vector<uint16_t> process_stream(const std::vector<uint16_t>& token_block);
-
+    std::vector<uint16_t> inverse_process_stream(const std::vector<uint8_t>& compressed_data);
 private:
     BwtTransform bwt_transformer_;
     MtfTransform mtf_transformer_;

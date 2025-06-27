@@ -11,4 +11,5 @@ struct BwtResult {
 class BwtTransform {
 public:
     BwtResult apply(const std::vector<uint16_t>& token_block);
+    std::vector<uint16_t> inverse_apply(const BwtResult& bwt_result);
 };

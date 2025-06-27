@@ -3,12 +3,28 @@
 #include <string>
 #include <fstream>
 #include <filesystem>
-#include <numeric> // std::count를 위해 추가
+#include <numeric>
+#include <stdexcept>
 
 #include "rANS_Coder.h"
 #include "SeparationEngine.h"
 #include "BwtEngine/BwtEngine.h"
 #include "BwtEngine/EntropyCoder/EntropyCoder.h"
+
+#include <cstdint>
+
+// 블록의 메타데이터를 나타내는 구조체
+// 파일에 한 번에 쓰고 읽어 관리의 편의성과 안정성을 높입니다.
+#pragma pack(push, 1) // 1바이트 정렬
+struct TriSplitBlockHeader {
+    uint8_t  metadata_flags;
+    uint8_t  reserved[7]; // 8바이트 정렬을 위한 패딩
+    uint64_t compressed_bitmap_size;
+    uint64_t compressed_mask_size;
+    uint64_t compressed_reconstructed_size;
+};
+#pragma pack(pop)
+
 
 // --- Enum for Engine Choice ---
 enum class EngineType { BWT, RANS };
@@ -33,7 +49,7 @@ void print_usage() {
 constexpr size_t BLOCK_SIZE = 8 * 1024 * 1024; // 처리할 블록 크기 (8MB)
 
 int main(int argc, char* argv[]) {
-    // 1. 인자 파싱 및 파일 유효성 검사
+    // 1. 인자 파싱 및 파일 유효성 검사 (기존과 동일)
     if (argc != 6) {
         print_usage();
         return 1;
@@ -68,7 +84,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // 2. 파일 스트림 열기
+    // 2. 파일 스트림 열기 (기존과 동일)
     std::ifstream input_file(input_path, std::ios::binary);
     std::ofstream output_file(output_path, std::ios::binary);
     if (!input_file.is_open() || !output_file.is_open()) {
@@ -89,9 +105,12 @@ int main(int argc, char* argv[]) {
             std::cout << "Processing block of " << bytes_read << " bytes..." << std::endl;
             std::vector<uint8_t> compressed_block = compress_block(buffer, selected_engine);
 
+            // [수정] 블록의 크기를 먼저 쓰고 데이터를 쓰는 방식으로 변경
             uint64_t compressed_size = compressed_block.size();
             output_file.write(reinterpret_cast<const char*>(&compressed_size), sizeof(compressed_size));
-            output_file.write(reinterpret_cast<const char*>(compressed_block.data()), compressed_size);
+            if (compressed_size > 0) {
+                output_file.write(reinterpret_cast<const char*>(compressed_block.data()), compressed_size);
+            }
         }
         std::cout << "Compression finished." << std::endl;
 
@@ -107,7 +126,9 @@ int main(int argc, char* argv[]) {
             std::cout << "Decompressing block of " << compressed_size << " bytes..." << std::endl;
             std::vector<uint8_t> decompressed_block = decompress_block(compressed_buffer);
 
-            output_file.write(reinterpret_cast<const char*>(decompressed_block.data()), decompressed_block.size());
+            if (!decompressed_block.empty()) {
+                output_file.write(reinterpret_cast<const char*>(decompressed_block.data()), decompressed_block.size());
+            }
         }
         std::cout << "Decompression finished." << std::endl;
     }
@@ -117,7 +138,7 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
-// --- 압축 로직 함수 (수정된 버전) ---
+// --- 압축 로직 함수 (오류 수정 및 로직 개선) ---
 std::vector<uint8_t> compress_block(const std::vector<uint8_t>& block_data, EngineType engine_type) {
     // [Phase 1] 스트림 분리
     std::cout << "  [1/4] Separating streams..." << std::endl;
@@ -134,77 +155,85 @@ std::vector<uint8_t> compress_block(const std::vector<uint8_t>& block_data, Engi
     std::cout << "  [3/4] Compressing Reconstructed stream with " << (engine_type == EngineType::BWT ? "BWT" : "RANS") << " engine..." << std::endl;
     std::vector<uint8_t> compressed_reconstructed;
 
-    // ======================= [오류 수정 지점] =======================
-    // is_placeholder_common 변수를 if 블록 이전에 선언하고 초기화합니다.
-    // 이렇게 하면 if-else 블록이 끝난 후에도 변수에 접근할 수 있습니다.
     bool is_placeholder_common = false;
 
     if (engine_type == EngineType::BWT) {
         BwtEngine engine_a;
         std::vector<uint16_t> recon_stream_u16(streams.reconstructed_stream.begin(), streams.reconstructed_stream.end());
-        std::vector<uint16_t> engine_a_result_u16 = engine_a.process_stream(recon_stream_u16);
+
+        // [오류 수정] BwtEngine::process_stream은 RleResult를 반환합니다.
+        RleResult engine_a_result = engine_a.process_stream(recon_stream_u16);
+
         EntropyCoder final_coder;
-        compressed_reconstructed = final_coder.huffman_encode(engine_a_result_u16);
-        std::cout << "    - Done. " << recon_stream_u16.size() * 2 << " bytes -> " << compressed_reconstructed.size() << " bytes." << std::endl;
+        // [오류 수정] huffman_encode는 RleResult를 인자로 받습니다.
+        compressed_reconstructed = final_coder.huffman_encode(engine_a_result);
+        std::cout << "    - Done. Reconstructed stream compressed size: " << compressed_reconstructed.size() << " bytes." << std::endl;
     }
     else { // engine_type == EngineType::RANS
-        // RANS 엔진을 사용할 때만 is_placeholder_common 값을 계산하여 설정합니다.
         size_t n_placeholders = std::count(streams.reconstructed_stream.begin(), streams.reconstructed_stream.end(), 1);
         is_placeholder_common = (n_placeholders >= streams.reconstructed_stream.size() / 2);
         compressed_reconstructed = byte_coder.encode_reconstructed_stream(streams.reconstructed_stream, is_placeholder_common);
-
-        std::cout << "    - Done. " << streams.reconstructed_stream.size() << " symbols -> " << compressed_reconstructed.size() << " bytes." << std::endl;
+        std::cout << "    - Done. Reconstructed stream compressed size: " << compressed_reconstructed.size() << " bytes." << std::endl;
     }
-    // ===============================================================
 
-    // [Phase 4] 최종 블록 조합
+    // [Phase 4] 최종 블록 조합 (헤더 구조체 사용)
     std::cout << "  [4/4] Assembling final block..." << std::endl;
-    uint8_t metadata_flag = 0;
-    if (streams.aux_mask_1_represents_11) metadata_flag |= (1 << 0);
-    if (is_placeholder_common)            metadata_flag |= (1 << 1); // 이제 오류 없이 접근 가능
-    if (engine_type == EngineType::RANS)  metadata_flag |= (1 << 2);
 
-    size_t header_size = 1 + 8 + 8 + 8;
-    size_t total_size = header_size + compressed_bitmap.size() + compressed_mask.size() + compressed_reconstructed.size();
+    TriSplitBlockHeader header;
+    memset(&header, 0, sizeof(header)); // 구조체 초기화
+
+    header.metadata_flags = 0;
+    if (streams.aux_mask_1_represents_11) header.metadata_flags |= (1 << 0);
+    if (is_placeholder_common)            header.metadata_flags |= (1 << 1);
+    if (engine_type == EngineType::RANS)  header.metadata_flags |= (1 << 2);
+
+    header.compressed_bitmap_size = compressed_bitmap.size();
+    header.compressed_mask_size = compressed_mask.size();
+    header.compressed_reconstructed_size = compressed_reconstructed.size();
+
+    size_t total_size = sizeof(header) + header.compressed_bitmap_size + header.compressed_mask_size + header.compressed_reconstructed_size;
     std::vector<uint8_t> final_block(total_size);
-    char* write_ptr = reinterpret_cast<char*>(final_block.data());
 
-    *reinterpret_cast<uint8_t*>(write_ptr) = metadata_flag; write_ptr += 1;
-    uint64_t chunk1_size = compressed_bitmap.size();
-    uint64_t chunk2_size = compressed_mask.size();
-    uint64_t chunk3_size = compressed_reconstructed.size();
-    memcpy(write_ptr, &chunk1_size, 8); write_ptr += 8;
-    memcpy(write_ptr, &chunk2_size, 8); write_ptr += 8;
-    memcpy(write_ptr, &chunk3_size, 8); write_ptr += 8;
+    uint8_t* write_ptr = final_block.data();
+    memcpy(write_ptr, &header, sizeof(header));
+    write_ptr += sizeof(header);
 
-    if (chunk1_size > 0) { memcpy(write_ptr, compressed_bitmap.data(), chunk1_size); write_ptr += chunk1_size; }
-    if (chunk2_size > 0) { memcpy(write_ptr, compressed_mask.data(), chunk2_size); write_ptr += chunk2_size; }
-    if (chunk3_size > 0) { memcpy(write_ptr, compressed_reconstructed.data(), chunk3_size); }
+    if (header.compressed_bitmap_size > 0) { memcpy(write_ptr, compressed_bitmap.data(), header.compressed_bitmap_size); write_ptr += header.compressed_bitmap_size; }
+    if (header.compressed_mask_size > 0) { memcpy(write_ptr, compressed_mask.data(), header.compressed_mask_size); write_ptr += header.compressed_mask_size; }
+    if (header.compressed_reconstructed_size > 0) { memcpy(write_ptr, compressed_reconstructed.data(), header.compressed_reconstructed_size); }
 
     std::cout << "    - Done. Final block size: " << final_block.size() << " bytes." << std::endl;
     return final_block;
 }
 
-// --- 복호화 로직 함수 (구현 완료) ---
+// --- 복호화 로직 함수 (BWT 역변환 포함 최종 버전) ---
 std::vector<uint8_t> decompress_block(const std::vector<uint8_t>& compressed_block_data) {
-    // 1. 블록 헤더 파싱
+    // 1. 블록 헤더 파싱 (안전한 방식으로)
     std::cout << "  [1/4] Parsing block header..." << std::endl;
-    const char* read_ptr = reinterpret_cast<const char*>(compressed_block_data.data());
+    if (compressed_block_data.size() < sizeof(TriSplitBlockHeader)) {
+        std::cerr << "Error: Compressed data is smaller than header size." << std::endl;
+        return {};
+    }
 
-    uint8_t metadata_flag = *reinterpret_cast<const uint8_t*>(read_ptr);
-    read_ptr += 1;
+    TriSplitBlockHeader header;
+    memcpy(&header, compressed_block_data.data(), sizeof(header));
 
-    uint64_t chunk1_size, chunk2_size, chunk3_size;
-    memcpy(&chunk1_size, read_ptr, 8); read_ptr += 8;
-    memcpy(&chunk2_size, read_ptr, 8); read_ptr += 8;
-    memcpy(&chunk3_size, read_ptr, 8); read_ptr += 8;
+    const uint8_t* read_ptr = compressed_block_data.data() + sizeof(header);
+    const uint8_t* data_end = compressed_block_data.data() + compressed_block_data.size();
 
-    // 2. 압축된 청크 데이터 분리
-    std::vector<uint8_t> compressed_bitmap(read_ptr, read_ptr + chunk1_size);
-    read_ptr += chunk1_size;
-    std::vector<uint8_t> compressed_mask(read_ptr, read_ptr + chunk2_size);
-    read_ptr += chunk2_size;
-    std::vector<uint8_t> compressed_reconstructed_data(read_ptr, read_ptr + chunk3_size);
+    // 2. 압축된 청크 데이터 분리 (경계 검사 추가)
+    if (read_ptr + header.compressed_bitmap_size > data_end ||
+        read_ptr + header.compressed_bitmap_size + header.compressed_mask_size > data_end ||
+        read_ptr + header.compressed_bitmap_size + header.compressed_mask_size + header.compressed_reconstructed_size > data_end) {
+        std::cerr << "Error: Corrupted block header, size mismatch." << std::endl;
+        return {};
+    }
+
+    std::vector<uint8_t> compressed_bitmap(read_ptr, read_ptr + header.compressed_bitmap_size);
+    read_ptr += header.compressed_bitmap_size;
+    std::vector<uint8_t> compressed_mask(read_ptr, read_ptr + header.compressed_mask_size);
+    read_ptr += header.compressed_mask_size;
+    std::vector<uint8_t> compressed_reconstructed_data(read_ptr, read_ptr + header.compressed_reconstructed_size);
 
     // 3. 각 스트림 복원
     std::cout << "  [2/4] Decompressing Value Bitmap & Auxiliary Mask streams..." << std::endl;
@@ -213,24 +242,25 @@ std::vector<uint8_t> decompress_block(const std::vector<uint8_t>& compressed_blo
     std::vector<uint8_t> auxiliary_mask = byte_coder.decode(compressed_mask);
 
     std::vector<uint8_t> reconstructed_stream;
-    bool used_rans_engine = (metadata_flag & (1 << 2));
+
+    bool used_rans_engine = (header.metadata_flags & (1 << 2));
 
     std::cout << "  [3/4] Decompressing Reconstructed stream with " << (used_rans_engine ? "RANS" : "BWT") << " engine..." << std::endl;
     if (used_rans_engine) {
-        // 메타데이터 플래그에서 is_placeholder_common 값을 직접 읽어옵니다.
-        bool is_placeholder_common = (metadata_flag & (1 << 1));
+        bool is_placeholder_common = (header.metadata_flags & (1 << 1));
         reconstructed_stream = byte_coder.decode_reconstructed_stream(compressed_reconstructed_data, is_placeholder_common);
     }
     else {
-        // BWT 엔진으로 압축된 경우
-        // TODO: BwtEngine 역변환 로직 구현 필요
-        std::cout << "    - BWT decompression is not implemented yet." << std::endl;
+        // BWT 엔진으로 압축된 경우, 역변환 파이프라인을 호출합니다.
+        BwtEngine engine_b;
+        std::vector<uint16_t> recon_stream_u16 = engine_b.inverse_process_stream(compressed_reconstructed_data);
+        reconstructed_stream.assign(recon_stream_u16.begin(), recon_stream_u16.end());
     }
 
     // 4. 최종 데이터 조합
     std::cout << "  [4/4] Reconstructing final data..." << std::endl;
     SeparationEngine separation_engine;
-    bool aux_mask_1_represents_11 = (metadata_flag & (1 << 0));
+    bool aux_mask_1_represents_11 = (header.metadata_flags & (1 << 0));
 
     std::vector<uint8_t> original_block = separation_engine.reconstruct(
         value_bitmap,
@@ -239,5 +269,6 @@ std::vector<uint8_t> decompress_block(const std::vector<uint8_t>& compressed_blo
         aux_mask_1_represents_11
     );
 
+    std::cout << "    - Done. Decompressed block size: " << original_block.size() << " bytes." << std::endl;
     return original_block;
 }

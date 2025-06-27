@@ -4,6 +4,7 @@
 #include <map>
 #include <memory>
 #include <string> 
+#include "../RleTransform/RleTransform.h"
 
 // 허프만 트리의 노드를 표현하는 구조체
 struct HuffmanNode {
@@ -20,10 +21,10 @@ struct HuffmanNode {
 
 class EntropyCoder {
 public:
-    // 이 함수 하나만 외부에서 호출
-    std::vector<uint8_t> huffman_encode(const std::vector<uint16_t>& symbol_stream);
+    std::vector<uint8_t> huffman_encode(const RleResult& rle_result);
+    // 복호화 함수는 RleResult를 반환
+    RleResult huffman_decode(const std::vector<uint8_t>& compressed_data);
 
 private:
-    // huffman_encode 내부에서만 사용될 비공개 헬퍼 함수들
     void _generate_codes(const HuffmanNode* node, std::string current_code, std::map<uint16_t, std::string>& huffman_codes);
 };
