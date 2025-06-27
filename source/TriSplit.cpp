@@ -1,4 +1,5 @@
-﻿// KO: 이 파일은 TriSplit 압축/복호화 프로그램의 메인 진입점(main function)입니다.
+﻿// Author: SnowPing00
+// KO: 이 파일은 TriSplit 압축/복호화 프로그램의 메인 진입점(main function)입니다.
 //     명령줄 인자를 파싱하여 압축 또는 복호화 모드를 결정하고,
 //     파일을 블록 단위로 읽어와 SeparationEngine과 rANS_Coder를 사용하여 작업을 수행합니다.
 // EN: This file is the main entry point for the TriSplit compression/decompression program.

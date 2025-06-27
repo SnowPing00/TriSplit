@@ -1,4 +1,5 @@
 ﻿#pragma once
+// Author: SnowPing00
 // KO: 헤더 파일이 중복으로 포함되는 것을 방지합니다.
 // EN: Prevents the header file from being included multiple times.
 #include <vector>

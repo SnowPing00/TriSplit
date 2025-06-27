@@ -1,4 +1,5 @@
-﻿// KO: 이 파일은 rANS_Coder 클래스의 멤버 함수들을 구현합니다.
+﻿// Author: SnowPing00
+// KO: 이 파일은 rANS_Coder 클래스의 멤버 함수들을 구현합니다.
 //     rANS_Coder는 Fabian 'ryg' Giesen의 'rans_byte.h' 라이브러리를 사용하여,
 //     TriSplit 프로젝트에 필요한 특정 종류의 데이터 스트림(바이너리, 비트, 재구성 스트림)을
 //     압축 및 복호화하는 고수준 인터페이스를 제공합니다.

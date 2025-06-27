@@ -1,4 +1,5 @@
-﻿// KO: 이 파일은 SeparationEngine 클래스의 멤버 함수들을 구현합니다.
+﻿// Author: SnowPing00
+// KO: 이 파일은 SeparationEngine 클래스의 멤버 함수들을 구현합니다.
 //     SeparationEngine은 TriSplit의 핵심 철학인 "분리하고, 변환하고, 정복하라"에서
 //     '분리'와 '정복(재조립)' 단계를 담당합니다.
 // EN: This file implements the member functions of the SeparationEngine class.

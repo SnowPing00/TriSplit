@@ -2,6 +2,12 @@ AI 지원 개발: 이 프로젝트의 일부 코드는 인공지능(AI)의 도�
 
 **제작자: SnowPing00**
 
+## Credits (감사의 말)
+
+이 프로젝트는 다음의 오픈소스 라이브러리를 사용합니다.
+
+* **rANS encoder/decoder:** Fabian 'ryg' Giesen의 퍼블릭 도메인 rANS 구현체.
+
 TriSplit: 3-스트림 분할 압축 엔진
 TriSplit은 범용 압축기가 아닌, 특정 데이터 패턴에 고도로 특화된 압축 엔진입니다. 이 프로젝트의 핵심 철학은 **"분리하고, 변환하고, 정복하라(Divide, Transform, and Conquer)"**입니다.
 

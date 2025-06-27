@@ -2,6 +2,12 @@ AI-Assisted Development: Parts of the code in this project were written and modi
 
 **Author: SnowPing00**
 
+## Acknowledgements
+
+This project uses the following open source libraries:
+
+* **rANS encoder/decoder:** A public domain rANS implementation by Fabian 'ryg' Giesen.
+
 TriSplit: A 3-Stream Separation-based Compression Engine
 TriSplit is not a general-purpose compressor but a highly specialized compression engine for specific data patterns. The core philosophy of this project is "Divide, Transform, and Conquer."
 
