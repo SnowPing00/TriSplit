@@ -1,10 +1,21 @@
-﻿#include "rANS_Coder.h"
-#include "rans_byte.h" // ryg_rans 라이브러리
+﻿// KO: 이 파일은 rANS_Coder 클래스의 멤버 함수들을 구현합니다.
+//     rANS_Coder는 Fabian 'ryg' Giesen의 'rans_byte.h' 라이브러리를 사용하여,
+//     TriSplit 프로젝트에 필요한 특정 종류의 데이터 스트림(바이너리, 비트, 재구성 스트림)을
+//     압축 및 복호화하는 고수준 인터페이스를 제공합니다.
+// EN: This file implements the member functions of the rANS_Coder class.
+//     rANS_Coder uses Fabian 'ryg' Giesen's 'rans_byte.h' library to provide
+//     a high-level interface for compressing and decompressing specific types of data streams
+//     (binary, bit, reconstructed streams) required for the TriSplit project.
+#include "rANS_Coder.h"
+#include "../rans_byte.h"
 #include <stdexcept>
 #include <vector>
-#include <cstring>   // for memcpy
+#include <cstring>
 
-// --- ENCODE (기존 바이트 단위 인코더) ---
+// --- ENCODE (Legacy byte-wise encoder) ---
+// --- 인코딩 (기존 바이트 단위 인코더) ---
+// KO: 0 또는 1의 값을 갖는 바이트(uint8_t) 스트림을 rANS 알고리즘으로 압축합니다.
+// EN: Compresses a stream of bytes (uint8_t) containing values of 0 or 1 using the rANS algorithm.
 std::vector<uint8_t> rANS_Coder::encode(const std::vector<uint8_t>& symbol_stream) {
     if (symbol_stream.empty()) {
         return {};
@@ -19,16 +30,14 @@ std::vector<uint8_t> rANS_Coder::encode(const std::vector<uint8_t>& symbol_strea
     const uint32_t scale_bits = 14;
     const uint32_t prob_scale = 1 << scale_bits;
 
-    // 엣지 케이스: 한 종류의 심볼만 있는 경우 (거의 발생하지 않음)
     if (freqs[0] == 0 || freqs[1] == 0) {
-        std::vector<uint8_t> output(8); // 헤더만 있는 데이터
+        std::vector<uint8_t> output(8);
         uint32_t freq0_val = (freqs[0] == 0) ? 0 : prob_scale;
         memcpy(output.data(), &total_symbols, 4);
         memcpy(output.data() + 4, &freq0_val, 4);
-        return output; // 데이터 없이 헤더만 반환
+        return output;
     }
 
-    // 빈도수 정규화
     uint32_t norm_freqs[2];
     uint32_t cum_freqs[3] = { 0, freqs[0], freqs[0] + freqs[1] };
     for (int i = 1; i <= 2; i++) {
@@ -43,7 +52,6 @@ std::vector<uint8_t> rANS_Coder::encode(const std::vector<uint8_t>& symbol_strea
     norm_freqs[0] = cum_freqs[1] - cum_freqs[0];
     norm_freqs[1] = cum_freqs[2] - cum_freqs[1];
 
-    // rANS 인코딩
     size_t original_size = symbol_stream.size();
     std::vector<uint8_t> compressed_buffer(original_size + (original_size / 5) + 16);
     uint8_t* ptr = compressed_buffer.data() + compressed_buffer.size();
@@ -57,7 +65,6 @@ std::vector<uint8_t> rANS_Coder::encode(const std::vector<uint8_t>& symbol_strea
     }
     RansEncFlush(&rans, &ptr);
 
-    // 최종 결과물 조합
     size_t compressed_size = (compressed_buffer.data() + compressed_buffer.size()) - ptr;
     std::vector<uint8_t> final_output(8 + compressed_size);
     memcpy(final_output.data(), &total_symbols, 4);
@@ -67,7 +74,10 @@ std::vector<uint8_t> rANS_Coder::encode(const std::vector<uint8_t>& symbol_strea
     return final_output;
 }
 
-// --- DECODE (기존 바이트 단위 디코더) ---
+// --- DECODE (Legacy byte-wise decoder) ---
+// --- 디코딩 (기존 바이트 단위 디코더) ---
+// KO: `encode` 함수로 압축된 데이터를 원본 바이트 스트림으로 복호화합니다.
+// EN: Decodes data compressed by the `encode` function back into the original byte stream.
 std::vector<uint8_t> rANS_Coder::decode(const std::vector<uint8_t>& compressed_data) {
     if (compressed_data.size() < 8) {
         throw std::runtime_error("Invalid compressed data: header too small.");
@@ -112,17 +122,20 @@ std::vector<uint8_t> rANS_Coder::decode(const std::vector<uint8_t>& compressed_d
 
 
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// +++ 신규 함수: 비트 스트림 처리용 (encode_bits / decode_bits)
+// +++ Bit Stream Handlers (encode_bits / decode_bits)
+// +++ 비트 스트림 처리용 함수 (encode_bits / decode_bits)
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 // --- ENCODE_BITS ---
+// KO: `std::vector<bool>` 형태의 비트 스트림을 압축합니다. 로직은 바이트 버전과 거의 동일합니다.
+// EN: Compresses a bit stream in the form of `std::vector<bool>`. The logic is almost identical to the byte version.
 std::vector<uint8_t> rANS_Coder::encode_bits(const std::vector<bool>& bit_stream) {
     if (bit_stream.empty()) {
         return {};
     }
 
     const uint32_t total_bits = static_cast<uint32_t>(bit_stream.size());
-    uint32_t freqs[2] = { 0, 0 }; // [0] = false의 빈도, [1] = true의 빈도
+    uint32_t freqs[2] = { 0, 0 }; // [0] = frequency of false, [1] = frequency of true
     for (bool bit : bit_stream) {
         freqs[bit ? 1 : 0]++;
     }
@@ -130,16 +143,14 @@ std::vector<uint8_t> rANS_Coder::encode_bits(const std::vector<bool>& bit_stream
     const uint32_t scale_bits = 14;
     const uint32_t prob_scale = 1 << scale_bits;
 
-    // 엣지 케이스: 모든 비트가 0이거나 모든 비트가 1인 경우
     if (freqs[0] == 0 || freqs[1] == 0) {
-        std::vector<uint8_t> output(8); // 헤더만 있는 데이터
+        std::vector<uint8_t> output(8);
         uint32_t freq0_val = (freqs[0] == 0) ? 0 : prob_scale;
         memcpy(output.data(), &total_bits, 4);
         memcpy(output.data() + 4, &freq0_val, 4);
         return output;
     }
 
-    // 빈도수 정규화 (기존 로직과 동일)
     uint32_t norm_freqs[2];
     uint32_t cum_freqs[3] = { 0, freqs[0], freqs[0] + freqs[1] };
     for (int i = 1; i <= 2; i++) {
@@ -154,7 +165,6 @@ std::vector<uint8_t> rANS_Coder::encode_bits(const std::vector<bool>& bit_stream
     norm_freqs[0] = cum_freqs[1] - cum_freqs[0];
     norm_freqs[1] = cum_freqs[2] - cum_freqs[1];
 
-    // rANS 인코딩
     size_t original_size_bytes = (bit_stream.size() + 7) / 8;
     std::vector<uint8_t> compressed_buffer(original_size_bytes + (original_size_bytes / 5) + 16);
     uint8_t* ptr = compressed_buffer.data() + compressed_buffer.size();
@@ -172,7 +182,6 @@ std::vector<uint8_t> rANS_Coder::encode_bits(const std::vector<bool>& bit_stream
     }
     RansEncFlush(&rans, &ptr);
 
-    // 최종 결과물 조합
     size_t compressed_size = (compressed_buffer.data() + compressed_buffer.size()) - ptr;
     std::vector<uint8_t> final_output(8 + compressed_size);
     memcpy(final_output.data(), &total_bits, 4);
@@ -183,6 +192,8 @@ std::vector<uint8_t> rANS_Coder::encode_bits(const std::vector<bool>& bit_stream
 }
 
 // --- DECODE_BITS ---
+// KO: `encode_bits`로 압축된 데이터를 원본 비트 스트림으로 복호화합니다.
+// EN: Decodes data compressed with `encode_bits` back to the original bit stream.
 std::vector<bool> rANS_Coder::decode_bits(const std::vector<uint8_t>& compressed_data) {
     if (compressed_data.size() < 8) {
         throw std::runtime_error("Invalid compressed data: header too small.");
@@ -225,7 +236,12 @@ std::vector<bool> rANS_Coder::decode_bits(const std::vector<uint8_t>& compressed
     return decoded_output;
 }
 
+
 // --- ENCODE_RECONSTRUCTED_STREAM ---
+// KO: 'reconstructed_stream'을 위한 특수 인코더입니다. 이 스트림의 심볼(마커/자리표시자)을
+//     더 압축이 잘되는 비트 패턴("00", "01")으로 변환한 뒤 rANS로 압축합니다.
+// EN: A special encoder for the 'reconstructed_stream'. It converts the symbols (markers/placeholders)
+//     of this stream into more compressible bit patterns ("00", "01") and then compresses them with rANS.
 std::vector<uint8_t> rANS_Coder::encode_reconstructed_stream(const std::vector<uint8_t>& recon_stream, bool is_placeholder_common) {
     if (recon_stream.empty()) {
         return {};
@@ -279,14 +295,12 @@ std::vector<uint8_t> rANS_Coder::encode_reconstructed_stream(const std::vector<u
     for (size_t i = recon_stream.size(); i > 0; --i) {
         uint8_t s = recon_stream[i - 1];
         if (s == common_symbol_val) {
-            // "00"을 인코딩 (LIFO: 0을 넣고, 그 위에 0을 또 넣음)
             RansEncPut(&rans, &ptr, 0, norm_freqs[0], scale_bits);
             RansEncPut(&rans, &ptr, 0, norm_freqs[0], scale_bits);
         }
         else {
-            // "01"을 인코딩 (LIFO: 1을 넣고, 그 위에 0을 넣음)
-            RansEncPut(&rans, &ptr, norm_freqs[0], norm_freqs[1], scale_bits); // 1
-            RansEncPut(&rans, &ptr, 0, norm_freqs[0], scale_bits);            // 0
+            RansEncPut(&rans, &ptr, norm_freqs[0], norm_freqs[1], scale_bits);
+            RansEncPut(&rans, &ptr, 0, norm_freqs[0], scale_bits);
         }
     }
     RansEncFlush(&rans, &ptr);
@@ -301,6 +315,8 @@ std::vector<uint8_t> rANS_Coder::encode_reconstructed_stream(const std::vector<u
 }
 
 // --- DECODE_RECONSTRUCTED_STREAM (오류 수정된 최종 버전) ---
+// KO: `encode_reconstructed_stream`으로 압축된 데이터를 복호화합니다.
+// EN: Decodes data compressed by `encode_reconstructed_stream`.
 std::vector<uint8_t> rANS_Coder::decode_reconstructed_stream(const std::vector<uint8_t>& compressed_data, bool is_placeholder_common) {
     if (compressed_data.size() < 8) {
         throw std::runtime_error("Invalid compressed data: header too small.");
@@ -342,25 +358,19 @@ std::vector<uint8_t> rANS_Coder::decode_reconstructed_stream(const std::vector<u
     uint8_t common_symbol = is_placeholder_common ? 1 : 0;
     uint8_t rare_symbol = is_placeholder_common ? 0 : 1;
 
-    // 디코딩 루프: 비트를 2개씩 순차적으로 읽어 심볼을 정확히 복원
     for (uint32_t i = 0; i < total_bits; i += 2) {
-        // LIFO에 따라 가장 마지막에 들어간 비트를 먼저 꺼냄.
-        // 이 비트는 항상 '0'이어야 함.
         uint32_t cf_prefix = RansDecGet(&rans, scale_bits);
         uint8_t bit_prefix = cum2sym[cf_prefix];
         RansDecAdvanceSymbol(&rans, &ptr, &dsyms[bit_prefix], scale_bits);
 
-        // 그 다음 비트(payload)를 꺼내서 심볼을 결정함.
         uint32_t cf_payload = RansDecGet(&rans, scale_bits);
         uint8_t bit_payload = cum2sym[cf_payload];
         RansDecAdvanceSymbol(&rans, &ptr, &dsyms[bit_payload], scale_bits);
 
         if (bit_payload == 1) {
-            // 페이로드 비트가 1이면, 원래 패턴은 "01" -> rare_symbol
             decoded_output.push_back(rare_symbol);
         }
         else {
-            // 페이로드 비트가 0이면, 원래 패턴은 "00" -> common_symbol
             decoded_output.push_back(common_symbol);
         }
     }

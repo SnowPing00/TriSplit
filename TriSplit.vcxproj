@@ -18,6 +18,16 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="source\rans_byte.h" />
+    <ClInclude Include="source\rANS_Coder\rANS_Coder.h" />
+    <ClInclude Include="source\SeparationEngine\SeparationEngine.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="source\rANS_Coder\rANS_Coder.cpp" />
+    <ClCompile Include="source\SeparationEngine\SeparationEngine.cpp" />
+    <ClCompile Include="source\TriSplit.cpp" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
@@ -123,16 +133,6 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="rANS_Coder.cpp" />
-    <ClCompile Include="SeparationEngine.cpp" />
-    <ClCompile Include="TriSplit.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="rans_byte.h" />
-    <ClInclude Include="rANS_Coder.h" />
-    <ClInclude Include="SeparationEngine.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
